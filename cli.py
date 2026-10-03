@@ -14,21 +14,41 @@ Windows 注意：所有打印显式 UTF-8，避免 ✅/⚠️ 触发 UnicodeEnco
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 import time
 from pathlib import Path
 
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
+
+def _force_utf8_stdout() -> None:
+    """把 stdout/stderr 切到 UTF-8，规避 Windows 控制台的 GBK 限制。
+
+    两个坑：
+    1. 必须用 ``getattr(..., None)`` 而非 ``hasattr``：pytest 的 capsys
+       替换对象在部分版本下**有** ``reconfigure`` 但调用会抛异常，
+       直接 try/except 更稳。
+    2. ``reconfigure`` 只在 TextIOWrapper 上存在；若 stdout 已被
+       重定向成二进制流则直接跳过。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        # pytest 捕获流 / 已关闭流：忽略，不影响主流程
+        with contextlib.suppress(ValueError, OSError, AttributeError):
+            reconfigure(encoding="utf-8", errors="replace")
+
+
+_force_utf8_stdout()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from core.config import SeqForgeConfig, load_config
-from data.dgp import DEFAULT_SPECS
-from eval.metrics import format_table
-from filters import backends
-from pipeline.runner import SeqForgePipeline
+from core.config import SeqForgeConfig, load_config  # noqa: E402
+from data.dgp import DEFAULT_SPECS  # noqa: E402
+from eval.metrics import format_table  # noqa: E402
+from filters import backends  # noqa: E402
+from pipeline.runner import SeqForgePipeline  # noqa: E402
 
 
 def _print_banner(title: str) -> None:
@@ -131,7 +151,14 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 
 def cmd_selftest(args: argparse.Namespace) -> int:
-    """只跑不变量（CI 快速门禁）。"""
+    """只跑不变量（CI 快速门禁）。
+
+    踩坑记录：`subprocess.run(text=True)` 不指定 ``encoding`` 时会用
+    **locale默认编码**解码子进程输出。Windows CI runner 的 locale 是 cp1252，
+    而 pytest 输出含中文 docstring 名与 ✅ 符号 ⇒抛
+    ``UnicodeDecodeError``，表现为「本地全绿、CI 莫名红」。
+    必须显式 ``encoding="utf-8"`` + ``errors="replace"``。
+    """
     import subprocess
 
     root = Path(__file__).resolve().parent
@@ -150,9 +177,11 @@ def cmd_selftest(args: argparse.Namespace) -> int:
         cwd=str(root),
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         check=False,
     )
-    print(r.stdout[-3000:])
+    sys.stdout.write(r.stdout[-3000:])
     return r.returncode
 
 

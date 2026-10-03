@@ -182,7 +182,10 @@ def test_cli_parser_subcommands():
 
 def test_cli_version(capsys):
     assert main(["version"]) == 0
-    assert "SeqForge" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "SeqForge" in out
+    # 署名必须存在（作者统一为「晨星」）
+    assert "晨星" in out
 
 
 def test_cli_list_runs():
