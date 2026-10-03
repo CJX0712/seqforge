@@ -1,0 +1,16 @@
+# SeqForge 运行时依赖（最小可运行集）
+#
+# 只需 numpy + scipy 即可跑全部内置方法（KF/EKF/IEKF/UKF/SIR/APF/FFBS/RTS）。
+# statsmodels / pykalman 是**可选**的 Tier-0 参照后端，
+# 缺失时 benchmark 自动标 skipped，不伪造数字（见 tests/test_backends.py）。
+
+numpy>=2.0
+scipy>=1.14
+
+# --- 可选：Tier-0 参照后端 ---
+# statsmodels>=0.14
+# pykalman>=0.9
+
+# --- 开发/测试 ---
+# pip install -r requirements.lock.txt  # 锁版本，CI 用
+# pip install pytest pytest-cov ruff

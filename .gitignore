@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# 测试与覆盖率
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.ruff_cache/
+
+# 本地产物（benchmark.json 由 demo 生成，不入库）
+artifacts/
+*.log
+
+# 密钥与凭据（本项目不应有任何密钥文件）
+.env
+*.key
+*.pem
+secrets.*
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+.DS_Store

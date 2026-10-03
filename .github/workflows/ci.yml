@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: lint + tests (${{ matrix.os }} / py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # 依赖锁：与 requirements.lock.txt 对齐，避免 numpy 版本漂移
+      # 翻转数值门禁（踩坑库§A：跨 numpy 版本 Monte-Carlo 流不稳定）。
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.lock.txt
+          python -m pip install pytest-cov
+
+      - name: ruff check (硬门禁，不用 `|| true`)
+        run: python -m ruff check .
+
+      - name: ruff format --check
+        run: python -m ruff format --check .
+
+      - name: pytest（含不变量门禁 + 覆盖率）
+        run: python -m pytest -q -W ignore::UserWarning --cov=. --cov-report=term-missing
+
+      # demo 冒烟：小规模跑通端到端，确保不依赖本地缓存
+      - name: demo smoke
+        run: |
+          python cli.py demo --steps 40 --particles 200 --seeds 7 --out artifacts
+
+      - name: secret scan
+        run: |
+          if git grep -nE "(sk-[A-Za-z0-9]{16,}|api[_-]?key\s*=\s*['\"][^'\"]{8,}|token\s*=\s*['\"][^'\"]{8,}|password\s*=\s*['\"][^'\"]{8,})" -- '*.py' '*.md' '*.toml' '*.yml'; then
+            echo "::error::potential secret found"
+            exit 1
+          fi
+          echo "no secrets found"

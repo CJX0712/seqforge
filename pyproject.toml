@@ -1,0 +1,101 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seqforge"
+version = "0.1.0"
+description = "SeqForge · 序贯贝叶斯推断与状态空间估计实验台（KF/EKF/IEKF/UKF/SIR/APF/FFBS）"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "晨星" }]
+keywords = [
+    "state-space-models",
+    "kalman-filter",
+    "particle-filter",
+    "sequential-bayesian-inference",
+    "marginal-likelihood",
+    "rauch-tung-striebel",
+    "ffbs",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.14",
+]
+
+[project.optional-dependencies]
+backends = ["statsmodels>=0.14", "pykalman>=0.9"]
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.6"]
+
+[project.scripts]
+seqforge = "cli:main"
+
+[tool.setuptools]
+packages = ["core", "data", "filters", "smoothers", "eval", "pipeline"]
+py-modules = ["cli"]
+
+[tool.pytest.ini_options]
+# 关键：干净环境下 pytest 不把 repo root 加进 sys.path，
+# 不设这一项 CI 会报 ModuleNotFoundError（踩坑库 §H）。
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::UserWarning", "ignore::RuntimeWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "SIM", # simplify
+    "RUF", # ruff-specific
+    "PL",  # pylint
+    "N",   # pep8-naming
+]
+ignore = [
+    "PLR0913", # too many arguments（构造器参数多是有意的）
+    "PLR2004", # magic value（算法常数需显式写出）
+    "PLR0912", # too many branches（数值循环天然分支多）
+    "PLR0915", # too many statements
+    "PLR0917", # too many positional arguments（构造器）
+    "N803",    # 函数名驼峰（与数学记号 x_pred/kalman_gain 一致）
+    "N806",    # 变量名驼峰（同上）
+    "E501",    # 行宽由 formatter 负责
+    # 本项目文档/注释/字符串全为中文，全角标点是正常书写而非"易混淆字符"。
+    # 实测禁用这三条可消除 819/896 条告警，其余才是真问题。
+    "RUF001",  # ambiguous-unicode-character-string
+    "RUF002",  # ambiguous-unicode-character-docstring
+    "RUF003",  # ambiguous-unicode-character-comment
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 测试函数名带不变量编号（test_I1_xxx），N802 对此不适用
+"tests/*" = ["PLR2004", "PLR0915", "N806", "N802", "PLC0415", "SLF001"]
+"examples/*" = ["E402", "PLC0415"]
+# 可选依赖必须懒加载：若在模块顶层 import，未装 statsmodels/pykalman 的
+# 干净环境连import 本包都会崩——这与「离线兜底」契约直接冲突。
+# 因此这里的延迟 import 是**设计要求**而非疏忽。
+"filters/backends.py" = ["PLC0415"]
+"core/numeric.py" = ["PLC0415"]
+"cli.py" = ["PLC0415"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "data", "filters", "smoothers", "eval", "pipeline"]
+
+[tool.ruff.format]
+docstring-code-format = true

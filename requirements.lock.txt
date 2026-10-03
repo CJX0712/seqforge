@@ -1,0 +1,12 @@
+coverage==7.16.2
+numpy==2.5.3
+packaging==26.3
+patsy==1.0.3
+pykalman==0.11.2
+pytest-cov==7.1.0
+pytest==9.1.1
+ruff==0.16.10
+scikit-learn==1.9.1
+scipy==1.18.1
+six==1.17.0
+statsmodels==0.15.0
